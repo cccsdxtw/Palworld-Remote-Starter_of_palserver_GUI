@@ -38,3 +38,11 @@
 * 伺服器必須開啟 **REST API** 功能，才能正確抓取線上人數與執行安全關機。
 * 本專案底層依賴 Chrome 瀏覽器進行自動化背景喚醒操作，請確保主機端已安裝 Google Chrome。
 * **千萬不要**將你填好密碼的 `config.json` 檔案上傳到網路上！
+
+### ⚠️ 必備前置作業：安裝 ChromeDriver (網頁驅動器)
+理論上他說會自動下載 但我用的時候他是沒有自動 所以
+本程式底層依賴自動化技術來操控面板，因此需要配合 **ChromeDriver** 才能正常運作！如果你沒有放置這個檔案，程式啟動時會報錯。
+
+1. 請先打開你的 Google Chrome 瀏覽器，點擊右上角三個點 ➡️ **說明** ➡️ **關於 Google Chrome**，確認你的 Chrome 版本數字 (例如 127.0.x.x)。
+2. 前往 [Chrome for Testing 官方下載頁](https://googlechromelabs.github.io/chrome-for-testing/)，找到對應版本的 `chromedriver-win64.zip` 並下載。
+3. 下載後解壓縮，將裡面的 **`chromedriver.exe`** 檔案，**直接跟本程式的 EXE 檔放在同一個資料夾裡面** 即可！
