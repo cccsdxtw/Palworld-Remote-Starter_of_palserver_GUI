@@ -13,6 +13,7 @@ from requests.auth import HTTPBasicAuth
 from flask import Flask, request
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -243,7 +244,23 @@ def run_web_automation(visitor_name, visitor_ip):
     try:
         options = Options()
         options.headless = True 
-        driver = webdriver.Chrome(options=options)
+        
+        # === 🚀 神級防呆進階版：優先找旁邊，找不到就用系統的 ===
+        if getattr(sys, 'frozen', False):
+            current_dir = os.path.dirname(sys.executable)
+        else:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            
+        driver_path = os.path.join(current_dir, "chromedriver.exe")
+        
+        # 判斷：如果旁邊有放，就強制用旁邊的
+        if os.path.exists(driver_path):
+            service = Service(executable_path=driver_path)
+            driver = webdriver.Chrome(service=service, options=options)
+        else:
+            # 如果旁邊沒放，就放手讓 Selenium 去抓你原本安裝過的環境！
+            driver = webdriver.Chrome(options=options)
+        # ====================================================
         
         driver.get(GUI_URL)
         wait_short = WebDriverWait(driver, 3) 
