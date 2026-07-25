@@ -392,7 +392,7 @@ def build_gui():
     global window, log_box
     window = tk.Tk()
     window.title(f"{SERVER_NAME} 主控台")
-    window.geometry("450x480") 
+    window.geometry("450x600")
     window.configure(bg="#f0f0f0")
 
     try:
@@ -496,6 +496,43 @@ def build_gui():
 
     btn_toggle = tk.Button(frame_block, text="啟動鎖定 (阻擋朋友開啟)", bg="#FF5252", fg="white", font=("微軟正黑體", 10, "bold"), command=toggle_block, relief="flat", padx=10, pady=5)
     btn_toggle.pack(pady=5)
+
+# 👇👇👇 從這裡開始貼上廣播區塊 👇👇👇
+# === 📢 伺服器全域廣播區塊 ===
+    frame_announce = tk.LabelFrame(window, text="伺服器對話框廣播 (Announce)", bg="#f0f0f0", font=("微軟正黑體", 9))
+    frame_announce.pack(fill=tk.X, padx=15, pady=5)
+
+    entry_announce = tk.Entry(frame_announce, font=("微軟正黑體", 10))
+    entry_announce.insert(0, "哈囉！台主上線啦！")
+    entry_announce.pack(fill=tk.X, pady=10, padx=10)
+
+    def trigger_announce():
+        msg = entry_announce.get()
+        if not msg:
+            return
+            
+        def send_task():
+            if not ADMIN_PASSWORD:
+                log_to_gui("❌ 廣播失敗：未設定管理員密碼", play_sound=True)
+                return
+            try:
+                data = {"message": msg}
+                resp = requests.post(f"{REST_API_URL}/v1/api/announce", json=data, auth=HTTPBasicAuth("admin", ADMIN_PASSWORD), timeout=5)
+                
+                if resp.status_code == 200:
+                    log_to_gui(f"📢 廣播成功：{msg}", play_sound=False)
+                    window.after(0, lambda: entry_announce.delete(0, tk.END)) 
+                else:
+                    log_to_gui(f"❌ 廣播失敗 (狀態碼: {resp.status_code})")
+            except Exception:
+                log_to_gui("❌ 廣播連線異常，伺服器可能未開啟", play_sound=True)
+
+        threading.Thread(target=send_task, daemon=True).start()
+
+    btn_announce = tk.Button(frame_announce, text="發送全服訊息", bg="#008CBA", fg="white", font=("微軟正黑體", 10, "bold"), command=trigger_announce, relief="flat", padx=10, pady=5)
+    btn_announce.pack(pady=5)
+    # ==================================
+    # 👆👆👆 廣播區塊到這裡結束 👆👆👆
 
     def trigger_shutdown():
         threading.Thread(target=safe_shutdown_task, daemon=True).start()
