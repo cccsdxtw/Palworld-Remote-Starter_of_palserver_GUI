@@ -21,6 +21,15 @@ from PIL import Image, ImageDraw
 import pystray
 
 # ==========================================
+# 🌟 資源導航魔法 (尋找打包後的圖示)
+# ==========================================
+def get_resource_path(relative_path):
+    """取得打包後資源的絕對路徑"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+# ==========================================
 # ⚙️ 設定檔與全域變數區
 # ==========================================
 CONFIG_FILE = "config.json"
@@ -47,8 +56,9 @@ def run_setup_wizard(config_path):
     setup_win.configure(bg="#f0f0f0")
 
     try:
-        if os.path.exists(r"C:\Users\DontHow\Desktop\鐵.ico"):
-            setup_win.iconbitmap(r"C:\Users\DontHow\Desktop\鐵.ico")
+        icon_path = get_resource_path("app_master_icon.ico")
+        if os.path.exists(icon_path):
+            setup_win.iconbitmap(icon_path)
     except Exception:
         pass
 
@@ -251,6 +261,24 @@ def run_web_automation(visitor_name, visitor_ip):
         else:
             current_dir = os.path.dirname(os.path.abspath(__file__))
             
+        # 👇👇👇 新增：進程守護，自動喚醒 palserver-agent 👇👇👇
+        tasks = os.popen('tasklist').read().lower()
+        if 'palserver-agent.exe' not in tasks:
+            log_to_gui("⚠️ 偵測到控制面板未啟動，正在自動喚醒 palserver-agent.exe...")
+            try:
+                agent_folder = os.path.join(current_dir, "palserver-agent-windows")
+                agent_path = os.path.join(agent_folder, "palserver-agent.exe")
+                
+                if os.path.exists(agent_path):
+                    subprocess.Popen(agent_path, shell=True, cwd=agent_folder, creationflags=subprocess.DETACHED_PROCESS)
+                    log_to_gui("✅ 面板程式喚醒成功！等待服務啟動中...")
+                    time.sleep(6)  
+                else:
+                    log_to_gui("❌ 找不到 palserver-agent.exe，無法自動喚醒")
+            except Exception as e:
+                log_to_gui(f"❌ 喚醒面板發生錯誤：{e}")
+        # 👆👆👆 喚醒邏輯到這裡結束 👆👆👆
+
         driver_path = os.path.join(current_dir, "chromedriver.exe")
         
         # 判斷：如果旁邊有放，就強制用旁邊的
@@ -396,10 +424,11 @@ def build_gui():
     window.configure(bg="#f0f0f0")
 
     try:
-        if os.path.exists(r"C:\Users\DontHow\Desktop\鐵.ico"):
-            window.iconbitmap(r"C:\Users\DontHow\Desktop\鐵.ico")
+        icon_path = get_resource_path("app_master_icon.ico")
+        if os.path.exists(icon_path):
+            window.iconbitmap(icon_path)
     except Exception:
-        pass 
+        pass
 
     # 頂部控制列 (放入狀態與設定按鈕)
     top_frame = tk.Frame(window, bg="#f0f0f0")
@@ -497,8 +526,7 @@ def build_gui():
     btn_toggle = tk.Button(frame_block, text="啟動鎖定 (阻擋朋友開啟)", bg="#FF5252", fg="white", font=("微軟正黑體", 10, "bold"), command=toggle_block, relief="flat", padx=10, pady=5)
     btn_toggle.pack(pady=5)
 
-# 👇👇👇 從這裡開始貼上廣播區塊 👇👇👇
-# === 📢 伺服器全域廣播區塊 ===
+    # === 📢 伺服器全域廣播區塊 ===
     frame_announce = tk.LabelFrame(window, text="伺服器對話框廣播 (Announce)", bg="#f0f0f0", font=("微軟正黑體", 9))
     frame_announce.pack(fill=tk.X, padx=15, pady=5)
 
@@ -532,7 +560,6 @@ def build_gui():
     btn_announce = tk.Button(frame_announce, text="發送全服訊息", bg="#008CBA", fg="white", font=("微軟正黑體", 10, "bold"), command=trigger_announce, relief="flat", padx=10, pady=5)
     btn_announce.pack(pady=5)
     # ==================================
-    # 👆👆👆 廣播區塊到這裡結束 👆👆👆
 
     def trigger_shutdown():
         threading.Thread(target=safe_shutdown_task, daemon=True).start()
@@ -549,8 +576,9 @@ def build_gui():
 
     def create_tray_image():
         try:
-            if os.path.exists(r"C:\Users\DontHow\Desktop\鐵.png"):
-                return Image.open(r"C:\Users\DontHow\Desktop\鐵.png")
+            img_path = get_resource_path("app_master_icon.ico")
+            if os.path.exists(img_path):
+                return Image.open(img_path)
             raise FileNotFoundError
         except Exception:
             image = Image.new('RGB', (64, 64), color=(3, 169, 244))
