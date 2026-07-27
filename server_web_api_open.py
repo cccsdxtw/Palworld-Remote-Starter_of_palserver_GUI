@@ -1005,7 +1005,7 @@ def build_gui():
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(new_config, f, indent=4, ensure_ascii=False)
                 messagebox.showinfo("成功", "設定已儲存！下次觸發將自動套用新設定。", parent=settings_win)
-                window.title(f"{SERVER_NAME} 主控台") 
+                window.title(f"{SERVER_NAME} 主控台 V1.5.1") 
                 settings_win.destroy()
             except Exception as e:
                 messagebox.showerror("錯誤", f"儲存失敗：{e}", parent=settings_win)
