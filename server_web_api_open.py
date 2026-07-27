@@ -54,6 +54,43 @@ app = Flask(__name__)
 # ==========================================
 # 🌟 設定與讀取系統
 # ==========================================
+def normalize_rest_api_url(value):
+    """
+    使用者只需填面板顯示的埠號（例如 8213）。
+    也相容舊設定的完整網址 http://127.0.0.1:8213。
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return "http://127.0.0.1:8213"
+    if raw.isdigit():
+        return f"http://127.0.0.1:{raw}"
+    # 誤填成 ":8213" 或 "127.0.0.1:8213"
+    if raw.startswith(":"):
+        port = raw[1:].strip()
+        if port.isdigit():
+            return f"http://127.0.0.1:{port}"
+    if "://" not in raw and raw.count(":") == 1:
+        host, port = raw.split(":", 1)
+        if port.isdigit():
+            host = host.strip() or "127.0.0.1"
+            return f"http://{host}:{port}"
+    return raw.rstrip("/")
+
+def rest_api_port_for_display(url):
+    """設定畫面顯示用：從完整網址抽出埠號，方便對照面板。"""
+    url = (url or "").strip()
+    if url.isdigit():
+        return url
+    try:
+        # http://127.0.0.1:8213 → 8213
+        after_scheme = url.split("://", 1)[-1]
+        hostport = after_scheme.split("/", 1)[0]
+        if ":" in hostport:
+            return hostport.rsplit(":", 1)[-1]
+    except Exception:
+        pass
+    return url
+
 def run_setup_wizard(config_path):
     setup_win = tk.Tk()
     setup_win.title("帕魯 API - 初次設定精靈")
@@ -75,7 +112,7 @@ def run_setup_wizard(config_path):
         ("遊戲連線 IP 與 Port", "例如：127.0.0.1:8211"),
         ("管理員密碼 (AdminPassword)", ""),
         ("伺服器面板網址", "http://localhost:8250"),
-        ("REST API 網址", "http://127.0.0.1:8213"),
+        ("REST API 埠號（面板顯示的數字，例如 8213）", "8213"),
         ("面板實例 ID (留空則系統自動抓取)", "")
     ]
 
@@ -90,12 +127,13 @@ def run_setup_wizard(config_path):
         entries.append(entry)
 
     def save_and_start():
+        rest_full = normalize_rest_api_url(entries[4].get())
         new_config = {
             "SERVER_NAME": entries[0].get(),
             "SERVER_IP_PORT": entries[1].get(),
             "ADMIN_PASSWORD": entries[2].get(),
-            "GUI_URL": entries[3].get(),
-            "REST_API_URL": entries[4].get(),
+            "GUI_URL": entries[3].get().strip() or "http://localhost:8250",
+            "REST_API_URL": rest_api_port_for_display(rest_full),  # 設定檔只存埠號
             "INSTANCE_ID": entries[5].get(),
             "AUTO_SHUTDOWN_MINUTES": 15
         }
@@ -138,13 +176,24 @@ def load_config_and_init():
         SERVER_NAME = cfg.get("SERVER_NAME", "預設伺服器")
         SERVER_IP_PORT = cfg.get("SERVER_IP_PORT", "127.0.0.1:8211")
         ADMIN_PASSWORD = cfg.get("ADMIN_PASSWORD", "")
-        REST_API_URL = cfg.get("REST_API_URL", "http://127.0.0.1:8213")
+        raw_rest = str(cfg.get("REST_API_URL", "8213")).strip()
+        REST_API_URL = normalize_rest_api_url(raw_rest)
         GUI_URL = cfg.get("GUI_URL", "http://localhost:8250")
         INSTANCE_ID = cfg.get("INSTANCE_ID", "")
         try:
             AUTO_SHUTDOWN_MINUTES = int(cfg.get("AUTO_SHUTDOWN_MINUTES", 15))
         except:
             AUTO_SHUTDOWN_MINUTES = 15
+
+        # 舊版若存完整網址，啟動時自動改寫成埠號（例如 8213）
+        port_only = rest_api_port_for_display(REST_API_URL)
+        if raw_rest != port_only:
+            cfg["REST_API_URL"] = port_only
+            try:
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(cfg, f, indent=4, ensure_ascii=False)
+            except Exception:
+                pass
     except Exception as e:
         print(f"讀取設定檔失敗: {e}")
         os._exit(1)
@@ -882,7 +931,7 @@ def start_server():
 def build_gui():
     global window, log_box
     window = tk.Tk()
-    window.title(f"{SERVER_NAME} 主控台 V1.5.0")
+    window.title(f"{SERVER_NAME} 主控台 V1.5.1")
     window.geometry("480x880")
     window.configure(bg="#f0f0f0")
 
@@ -913,7 +962,7 @@ def build_gui():
             ("遊戲連線 IP 與 Port", SERVER_IP_PORT),
             ("管理員密碼 (AdminPassword)", ADMIN_PASSWORD),
             ("伺服器面板網址", GUI_URL),
-            ("REST API 網址", REST_API_URL),
+            ("REST API 埠號（面板顯示的數字，例如 8213）", rest_api_port_for_display(REST_API_URL)),
             ("面板實例 ID (留空則系統自動抓取)", INSTANCE_ID)
         ]
         
@@ -932,8 +981,8 @@ def build_gui():
             SERVER_NAME = entries[0].get()
             SERVER_IP_PORT = entries[1].get()
             ADMIN_PASSWORD = entries[2].get()
-            GUI_URL = entries[3].get()
-            REST_API_URL = entries[4].get()
+            GUI_URL = entries[3].get().strip() or "http://localhost:8250"
+            REST_API_URL = normalize_rest_api_url(entries[4].get())
             INSTANCE_ID = entries[5].get()
             
             new_config = {
@@ -941,7 +990,7 @@ def build_gui():
                 "SERVER_IP_PORT": SERVER_IP_PORT,
                 "ADMIN_PASSWORD": ADMIN_PASSWORD,
                 "GUI_URL": GUI_URL,
-                "REST_API_URL": REST_API_URL,
+                "REST_API_URL": rest_api_port_for_display(REST_API_URL),  # 設定檔只存埠號
                 "INSTANCE_ID": INSTANCE_ID,
                 "AUTO_SHUTDOWN_MINUTES": AUTO_SHUTDOWN_MINUTES
             }
